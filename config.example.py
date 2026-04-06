@@ -1,0 +1,8 @@
+SECRET_KEY = "your-secret-key-here"
+API_KEY = "your-openweathermap-api-key"
+BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
+AQI_URL = "https://api.openweathermap.org/data/2.5/air_pollution"
+GOOGLE_CLIENT_ID = "your-google-client-id"
+GOOGLE_CLIENT_SECRET = "your-google-client-secret"
+SERPAPI_KEY = "your-serpapi-key"

@@ -1,0 +1,53 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+
+# ── Virtual Environment ───────────────────────────────────
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# ── Environment & Secrets (MOST IMPORTANT) ───────────────
+config.py
+secret_key.py
+.env
+*.env
+
+# ── User Data Files ───────────────────────────────────────
+user_logins.json
+favorites.json
+
+# ── Flask / Cache ─────────────────────────────────────────
+instance/
+.webassets-cache
+flask_session/
+
+# ── VS Code ───────────────────────────────────────────────
+.vscode/
+*.code-workspace
+
+# ── OS Files ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Distribution / Build ──────────────────────────────────
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# ── pytest ────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage

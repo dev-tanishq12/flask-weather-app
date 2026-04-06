@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeatherPro — Precision Weather Forecasting</title>
+    <meta name="description" content="Real-time weather, 7-day forecasts, live AQI, and temperature trends — all in one beautiful app.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <style>
+    /* ── Tokens ─────────────────────────────────────────── */
+    :root {
+        --h: 228;
+        --p:  hsl(var(--h),88%,62%);
+        --p2: hsl(var(--h),88%,48%);
+        --a:  hsl(195,90%,58%);
+        --a2: hsl(270,70%,62%);
+        --rose: hsl(350,85%,62%);
+        --amber: hsl(38,95%,58%);
+
+        --bg:      hsl(222,30%,7%);
+        --bg2:     hsl(222,28%,10%);
+        --surf:    hsl(222,25%,14%);
+        --surf2:   hsl(222,22%,18%);
+        --glass:   rgba(255,255,255,0.05);
+        --gb:      rgba(255,255,255,0.10);
+        --text:    hsl(220,25%,95%);
+        --text2:   hsl(220,15%,70%);
+        --text3:   hsl(220,12%,48%);
+        --border:  rgba(255,255,255,0.08);
+        --border2: rgba(255,255,255,0.14);
+
+        --r: 18px;
+        --r2: 12px;
+        --nav: 70px;
+    }
+
+    /* ── Reset ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+        font-family: 'Inter', system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        overflow-x: hidden;
+        line-height: 1.65;
+    }
+
+    ::selection { background: hsl(var(--h),80%,60%,0.35); }
+
+    /* ── Animated Background ────────────────────────────── */
+    .bg-canvas {
+        position: fixed;
+        inset: 0; z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+    }
+
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.55;
+        animation: drift linear infinite;
+    }
+
+    .orb-1 {
+        width: 600px; height: 600px;
+        background: radial-gradient(circle, hsl(var(--h),80%,55%) 0%, transparent 70%);
+        top: -200px; left: -150px;
+        animation-duration: 22s;
+    }
+
+    .orb-2 {
+        width: 500px; height: 500px;
+        background: radial-gradient(circle, hsl(195,80%,52%) 0%, transparent 70%);
+        bottom: -150px; right: -100px;
+        animation-duration: 28s;
+        animation-direction: reverse;
+    }
+
+    .orb-3 {
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, hsl(270,70%,58%) 0%, transparent 70%);
+        top: 40%; left: 50%;
+        transform: translate(-50%, -50%);
+        animation-duration: 35s;
+        opacity: 0.3;
+    }
+
+    @keyframes drift {
+        0%   { transform: translate(0,0) scale(1); }
+        33%  { transform: translate(40px,-30px) scale(1.05); }
+        66%  { transform: translate(-20px,40px) scale(0.97); }
+        100% { transform: translate(0,0) scale(1); }
+    }
+
+    /* Star particles */
+    .stars {
+        position: absolute;
+        inset: 0;
+        background-image:
+            radial-gradient(1px 1px at 15%  10%, rgba(255,255,255,0.6) 0%, transparent 100%),
+            radial-gradient(1px 1px at 72%   8%, rgba(255,255,255,0.5) 0%, transparent 100%),
+            radial-gradient(1.5px 1.5px at 33% 35%, rgba(255,255,255,0.4) 0%, transparent 100%),
+            radial-gradient(1px 1px at 88%  42%, rgba(255,255,255,0.6) 0%, transparent 100%),
+            radial-gradient(1px 1px at 54%  68%, rgba(255,255,255,0.3) 0%, transparent 100%),
+            radial-gradient(1px 1px at  8%  78%, rgba(255,255,255,0.5) 0%, transparent 100%),
+            radial-gradient(1.5px 1.5px at 92% 85%, rgba(255,255,255,0.4) 0%, transparent 100%),
+            radial-gradient(1px 1px at 44%  92%, rgba(255,255,255,0.5) 0%, transparent 100%),
+            radial-gradient(1px 1px at 26%  58%, rgba(255,255,255,0.3) 0%, transparent 100%),
+            radial-gradient(1px 1px at 63%  25%, rgba(255,255,255,0.45) 0%, transparent 100%),
+            radial-gradient(1px 1px at 80%  15%, rgba(255,255,255,0.35) 0%, transparent 100%),
+            radial-gradient(1px 1px at  5%  50%, rgba(255,255,255,0.4) 0%, transparent 100%);
+        animation: twinkle 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes twinkle { from { opacity:0.6; } to { opacity:1; } }
+
+    /* ── Navbar ─────────────────────────────────────────── */
+    .navbar {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 900;
+        height: var(--nav);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 2.5rem;
+        backdrop-filter: blur(24px) saturate(160%);
+        -webkit-backdrop-filter: blur(24px) saturate(160%);
+        background: rgba(12,14,22,0.6);
+        border-bottom: 1px solid var(--border);
+        transition: background 0.3s;
+    }
+
+    .brand {
+        display: flex; align-items: center; gap: 0.65rem;
+        text-decoration: none; color: var(--text);
+        font-size: 1.2rem; font-weight: 800; letter-spacing: -0.3px;
+    }
+
+    .brand-icon {
+        width: 38px; height: 38px;
+        background: linear-gradient(135deg, var(--p), var(--a));
+        border-radius: 11px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; color: white;
+        box-shadow: 0 4px 18px hsl(var(--h),80%,55%,0.45);
+    }
+
+    .nav-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+    .nav-link {
+        color: var(--text2);
+        text-decoration: none;
+        font-size: 0.88rem; font-weight: 500;
+        padding: 0.4rem 0.75rem;
+        border-radius: 8px;
+        transition: color 0.2s, background 0.2s;
+        display: none;
+    }
+
+    @media(min-width:700px){ .nav-link { display: inline-block; } }
+    .nav-link:hover { color: var(--text); background: var(--glass); }
+
+    .btn-nav {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.5rem 1.25rem;
+        background: linear-gradient(135deg, var(--p), var(--p2));
+        color: white;
+        border: none; border-radius: 50px;
+        font-family: inherit; font-size: 0.88rem; font-weight: 700;
+        cursor: pointer; text-decoration: none;
+        box-shadow: 0 4px 18px hsl(var(--h),80%,55%,0.4);
+        transition: all 0.25s;
+    }
+
+    .btn-nav:hover { transform: translateY(-2px); box-shadow: 0 8px 28px hsl(var(--h),80%,55%,0.55); color: white; }
+
+    /* ── Page wrapper ───────────────────────────────────── */
+    .page { position: relative; z-index: 1; }
+
+    /* ── HERO ───────────────────────────────────────────── */
+    .hero {
+        min-height: 100svh;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        text-align: center;
+        padding: calc(var(--nav) + 3rem) 1.5rem 4rem;
+        position: relative;
+    }
+
+    .hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        background: var(--glass);
+        border: 1px solid var(--border2);
+        border-radius: 50px;
+        padding: 0.35rem 1rem;
+        font-size: 0.78rem; font-weight: 700;
+        color: var(--a);
+        letter-spacing: 0.5px;
+        margin-bottom: 1.75rem;
+        backdrop-filter: blur(8px);
+        animation: fadeUp 0.7s ease both;
+    }
+
+    .live-dot {
+        width: 7px; height: 7px;
+        background: var(--a);
+        border-radius: 50%;
+        box-shadow: 0 0 8px var(--a);
+        animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+
+    .hero-headline {
+        font-size: clamp(2.8rem, 7vw, 5.5rem);
+        font-weight: 900;
+        letter-spacing: -2.5px;
+        line-height: 1.05;
+        margin-bottom: 1.5rem;
+        animation: fadeUp 0.7s 0.1s ease both;
+    }
+
+    .hero-headline .line1 { display: block; color: var(--text); }
+
+    .hero-headline .line2 {
+        display: block;
+        background: linear-gradient(90deg, var(--p) 0%, var(--a) 50%, var(--a2) 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        background-size: 200% auto;
+        animation: shimmer 4s linear infinite, fadeUp 0.7s 0.15s ease both;
+    }
+
+    @keyframes shimmer { to { background-position: 200% center; } }
+
+    .hero-sub {
+        font-size: clamp(1rem, 2.5vw, 1.2rem);
+        color: var(--text2);
+        max-width: 600px;
+        margin: 0 auto 2.5rem;
+        font-weight: 400;
+        line-height: 1.7;
+        animation: fadeUp 0.7s 0.2s ease both;
+    }
+
+    .hero-cta {
+        display: flex; flex-wrap: wrap; gap: 0.85rem;
+        justify-content: center;
+        margin-bottom: 3.5rem;
+        animation: fadeUp 0.7s 0.3s ease both;
+    }
+
+    .btn-primary {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.9rem 2.2rem;
+        background: linear-gradient(135deg, var(--p), var(--p2));
+        color: white; border: none; border-radius: 50px;
+        font-family: inherit; font-size: 1rem; font-weight: 700;
+        cursor: pointer; text-decoration: none;
+        box-shadow: 0 8px 32px hsl(var(--h),80%,55%,0.5);
+        transition: all 0.25s;
+    }
+
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 16px 40px hsl(var(--h),80%,55%,0.6); color: white; }
+
+    .btn-outline {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.88rem 2rem;
+        background: var(--glass);
+        color: var(--text2); border: 1px solid var(--border2);
+        border-radius: 50px;
+        font-family: inherit; font-size: 1rem; font-weight: 600;
+        cursor: pointer; text-decoration: none;
+        backdrop-filter: blur(8px);
+        transition: all 0.25s;
+    }
+
+    .btn-outline:hover { border-color: var(--p); color: var(--p); transform: translateY(-3px); }
+
+    /* ── App Mockup ─────────────────────────────────────── */
+    .mockup-wrap {
+        position: relative;
+        max-width: 820px;
+        margin: 0 auto;
+        animation: fadeUp 0.8s 0.4s ease both;
+    }
+
+    .mockup-wrap::before {
+        content: '';
+        position: absolute;
+        inset: -40px;
+        background: radial-gradient(ellipse at center,
+            hsl(var(--h),80%,55%,0.18) 0%,
+            transparent 70%);
+        z-index: -1;
+    }
+
+    .mockup {
+        background: linear-gradient(160deg, hsl(var(--h),60%,18%) 0%, hsl(222,35%,12%) 100%);
+        border: 1px solid var(--border2);
+        border-radius: 24px;
+        padding: 1.75rem;
+        box-shadow:
+            0 0 0 1px rgba(255,255,255,0.06),
+            0 32px 80px rgba(0,0,0,0.5),
+            0 0 120px hsl(var(--h),80%,55%,0.12);
+        backdrop-filter: blur(20px);
+        text-align: left;
+    }
+
+    /* Browser chrome dots */
+    .mockup-chrome {
+        display: flex; align-items: center; gap: 0.4rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+
+    .mockup-url {
+        flex: 1;
+        background: rgba(255,255,255,0.07);
+        border-radius: 6px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.72rem; color: var(--text3);
+        margin-left: 0.5rem;
+    }
+
+    /* Mockup search bar */
+    .m-search {
+        display: flex; gap: 0.6rem; margin-bottom: 1rem;
+    }
+
+    .m-input {
+        flex: 1;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+        padding: 0.6rem 1rem;
+        color: var(--text2); font-size: 0.82rem;
+        display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    .m-btn {
+        background: linear-gradient(135deg, var(--p), var(--p2));
+        border: none; border-radius: 10px;
+        padding: 0.6rem 1.1rem;
+        color: white; font-size: 0.8rem; font-weight: 700;
+        cursor: pointer;
+    }
+
+    .m-btn-ghost {
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+        padding: 0.6rem 1rem;
+        color: var(--text2); font-size: 0.8rem; font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Mockup weather hero */
+    .m-hero-card {
+        background: linear-gradient(145deg, hsl(var(--h),75%,44%) 0%, hsl(195,80%,42%) 60%, hsl(270,55%,45%) 100%);
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 0.85rem;
+        position: relative; overflow: hidden;
+    }
+
+    .m-hero-card::before {
+        content: '';
+        position: absolute; top: -20px; right: -20px;
+        width: 120px; height: 120px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 50%;
+    }
+
+    .m-city { font-size: 1.1rem; font-weight: 800; color: white; }
+    .m-time { font-size: 0.7rem; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .m-temp { font-size: 3rem; font-weight: 900; color: white; line-height: 1; }
+    .m-desc { font-size: 0.75rem; color: rgba(255,255,255,0.8); text-transform: capitalize; }
+    .m-icon { font-size: 3.5rem; opacity: 0.9; animation: float 4s ease-in-out infinite; }
+
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+    /* Mockup detail grid */
+    .m-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.6rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .m-tile {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.09);
+        border-radius: 10px;
+        padding: 0.7rem 0.5rem;
+        text-align: center;
+    }
+
+    .m-tile-icon { font-size: 1rem; margin-bottom: 0.2rem; display: block; }
+    .m-tile-label { font-size: 0.6rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .m-tile-val { font-size: 0.82rem; font-weight: 700; color: var(--text2); }
+
+    /* Mockup forecast strip */
+    .m-forecast { display: flex; gap: 0.5rem; overflow: hidden; }
+
+    .m-fday {
+        flex: 1;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 0.6rem 0.4rem;
+        text-align: center;
+        font-size: 0.7rem;
+    }
+
+    .m-fday:first-child {
+        background: linear-gradient(145deg, hsl(var(--h),50%,22%), hsl(195,50%,22%));
+        border-color: hsl(var(--h),50%,32%);
+    }
+
+    .m-fday-name { color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 0.2rem; }
+    .m-fday-icon { font-size: 1.1rem; }
+    .m-fday-hi { color: #ff7979; font-weight: 700; }
+    .m-fday-lo { color: var(--text3); }
+
+    /* Floating weather elements */
+    .float-el {
+        position: absolute;
+        pointer-events: none;
+        animation: floatEl var(--dur,6s) ease-in-out infinite;
+        opacity: 0.18;
+    }
+
+    @keyframes floatEl {
+        0%,100%{ transform: translateY(0) rotate(0deg); }
+        50%{ transform: translateY(var(--dy,-15px)) rotate(var(--rot,5deg)); }
+    }
+
+    /* ── Scroll Reveal ──────────────────────────────────── */
+    .reveal {
+        opacity: 0;
+        transform: translateY(40px);
+        transition: opacity 0.75s ease, transform 0.75s ease;
+    }
+
+    .reveal.visible { opacity: 1; transform: none; }
+
+    @keyframes fadeUp {
+        from { opacity:0; transform:translateY(28px); }
+        to   { opacity:1; transform:none; }
+    }
+
+    /* ── Stats Bar ──────────────────────────────────────── */
+    .stats-section {
+        padding: 3rem 1.5rem;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        background: var(--glass);
+        backdrop-filter: blur(12px);
+    }
+
+    .stats-inner {
+        max-width: 900px; margin: 0 auto;
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;
+    }
+
+    .stat-card {
+        flex: 1; min-width: 160px; max-width: 220px;
+        text-align: center;
+        padding: 1.5rem 1rem;
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        backdrop-filter: blur(8px);
+        transition: transform 0.3s, border-color 0.3s;
+    }
+
+    .stat-card:hover { transform: translateY(-4px); border-color: var(--border2); }
+
+    .stat-num {
+        font-size: 2.4rem; font-weight: 900; letter-spacing: -1px;
+        background: linear-gradient(135deg, var(--p), var(--a));
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        display: block; line-height: 1.1;
+    }
+
+    .stat-label { font-size: 0.78rem; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.35rem; }
+
+    /* ── Features ───────────────────────────────────────── */
+    .section {
+        max-width: 1160px; margin: 0 auto;
+        padding: 6rem 1.5rem;
+    }
+
+    .section-tag {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        background: hsl(var(--h),70%,55%,0.12);
+        border: 1px solid hsl(var(--h),70%,55%,0.25);
+        color: var(--p);
+        border-radius: 50px;
+        padding: 0.3rem 1rem;
+        font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px;
+        margin-bottom: 1rem;
+    }
+
+    .section-title {
+        font-size: clamp(1.8rem, 4vw, 3rem);
+        font-weight: 900; letter-spacing: -1px;
+        color: var(--text);
+        margin-bottom: 0.75rem;
+        line-height: 1.15;
+    }
+
+    .section-sub {
+        font-size: 1.05rem; color: var(--text2);
+        max-width: 560px; line-height: 1.7;
+        margin-bottom: 3.5rem;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .feat-card {
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 2rem;
+        position: relative; overflow: hidden;
+        transition: all 0.35s;
+        cursor: default;
+    }
+
+    .feat-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, var(--glow1, hsl(var(--h),80%,55%,0.06)), var(--glow2, transparent));
+        opacity: 0;
+        transition: opacity 0.35s;
+    }
+
+    .feat-card:hover::before { opacity: 1; }
+    .feat-card:hover {
+        border-color: var(--border2);
+        transform: translateY(-6px);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    }
+
+    .feat-icon-wrap {
+        width: 52px; height: 52px;
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem;
+        margin-bottom: 1.25rem;
+        position: relative;
+    }
+
+    .feat-icon-wrap::after {
+        content: '';
+        position: absolute; inset: 0;
+        border-radius: 14px;
+        opacity: 0.15;
+        background: inherit;
+        transform: scale(1.2) blur(6px);
+    }
+
+    .feat-card h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .feat-card p  { font-size: 0.9rem; color: var(--text2); line-height: 1.65; }
+
+    /* ── How it works ───────────────────────────────────── */
+    .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 1px;
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        overflow: hidden;
+    }
+
+    .step {
+        background: var(--bg2);
+        padding: 2rem;
+        position: relative;
+        transition: background 0.3s;
+    }
+
+    .step:hover { background: var(--surf); }
+
+    .step-num {
+        width: 40px; height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--p), var(--a));
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem; font-weight: 900; color: white;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 14px hsl(var(--h),80%,55%,0.35);
+    }
+
+    .step h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .step p  { font-size: 0.85rem; color: var(--text2); }
+
+    /* ── News Section ───────────────────────────────────── */
+    .news-section {
+        border-top: 1px solid var(--border);
+        padding: 5rem 0;
+        background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    }
+
+    .news-section .section { padding-top: 0; padding-bottom: 0; }
+
+    .news-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .news-card {
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 1.5rem;
+        transition: all 0.3s;
+        text-decoration: none; color: inherit;
+        display: block;
+    }
+
+    .news-card:hover {
+        border-color: var(--border2);
+        transform: translateY(-5px);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+    }
+
+    .news-source {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        font-size: 0.7rem; font-weight: 700;
+        color: var(--a); text-transform: uppercase; letter-spacing: 0.5px;
+        margin-bottom: 0.6rem;
+    }
+
+    .news-card h4 {
+        font-size: 0.95rem; font-weight: 700; line-height: 1.45;
+        color: var(--text); margin-bottom: 0.5rem;
+        transition: color 0.2s;
+    }
+
+    .news-card:hover h4 { color: var(--p); }
+
+    .news-snippet { font-size: 0.82rem; color: var(--text3); line-height: 1.6; margin-bottom: 0.75rem; }
+    .news-date { font-size: 0.72rem; color: var(--text3); display: flex; align-items: center; gap: 0.3rem; }
+
+    /* ── Bottom CTA ─────────────────────────────────────── */
+    .cta-section {
+        padding: 6rem 1.5rem;
+        text-align: center;
+        border-top: 1px solid var(--border);
+        position: relative; overflow: hidden;
+    }
+
+    .cta-section::before {
+        content: '';
+        position: absolute; top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 800px; height: 400px;
+        background: radial-gradient(ellipse, hsl(var(--h),80%,55%,0.14) 0%, transparent 70%);
+        pointer-events: none;
+    }
+
+    .cta-section h2 {
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        font-weight: 900; letter-spacing: -1.5px;
+        margin-bottom: 1rem;
+        background: linear-gradient(90deg, var(--text) 40%, var(--p) 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+
+    .cta-section p { font-size: 1.05rem; color: var(--text2); margin-bottom: 2.5rem; }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    footer {
+        border-top: 1px solid var(--border);
+        padding: 2rem 1.5rem;
+        text-align: center;
+        color: var(--text3); font-size: 0.82rem;
+    }
+
+    footer a { color: var(--text3); text-decoration: none; transition: color 0.2s; }
+    footer a:hover { color: var(--p); }
+
+    /* ── Utilities ──────────────────────────────────────── */
+    .text-center { text-align: center; }
+
+    @media (max-width: 640px) {
+        .navbar { padding: 0 1rem; }
+        .m-grid { grid-template-columns: repeat(2, 1fr); }
+        .mockup { padding: 1rem; }
+        .m-city { font-size: 0.9rem; }
+        .m-temp { font-size: 2rem; }
+    }
+    </style>
+</head>
+<body>
+
+<!-- Animated background -->
+<div class="bg-canvas">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="stars"></div>
+</div>
+
+<!-- Floating decorative weather icons -->
+<span class="float-el" style="font-size:5rem;top:18%;left:5%;--dur:7s;--dy:-18px;--rot:-6deg;">🌤</span>
+<span class="float-el" style="font-size:3.5rem;top:60%;left:3%;--dur:9s;--dy:-12px;--rot:8deg;">🌧</span>
+<span class="float-el" style="font-size:4rem;top:25%;right:4%;--dur:8s;--dy:-20px;--rot:-4deg;">⚡</span>
+<span class="float-el" style="font-size:3rem;top:70%;right:6%;--dur:6.5s;--dy:-10px;--rot:6deg;">❄️</span>
+<span class="float-el" style="font-size:2.5rem;top:45%;right:2%;--dur:10s;--dy:-14px;--rot:-8deg;">🌈</span>
+
+<!-- ── Navbar ────────────────────────────────── -->
+<nav class="navbar">
+    <a href="#" class="brand">
+        <div class="brand-icon"><i class="bi bi-cloud-sun-fill"></i></div>
+        WeatherPro
+    </a>
+    <div class="nav-actions">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#how-it-works" class="nav-link">How it works</a>
+        <a href="{{ url_for('login') }}" class="btn-nav">
+            <i class="bi bi-lightning-charge-fill"></i> Get Started Free
+        </a>
+    </div>
+</nav>
+
+<div class="page">
+
+    <!-- ══════════════════════ HERO ══════════════════════ -->
+    <section class="hero">
+
+        <div class="hero-eyebrow">
+            <span class="live-dot"></span>
+            Live global weather data · Updated every minute
+        </div>
+
+        <h1 class="hero-headline">
+            <span class="line1">Know your weather.</span>
+            <span class="line2">Always. Anywhere.</span>
+        </h1>
+
+        <p class="hero-sub">
+            Real-time conditions, 7-day forecasts, air quality index,
+            and temperature trends — all in one sleek, fast dashboard.
+        </p>
+
+        <div class="hero-cta">
+            <a href="{{ url_for('login') }}" class="btn-primary">
+                <i class="bi bi-google"></i> Sign in with Google — Free
+            </a>
+            <a href="#features" class="btn-outline">
+                <i class="bi bi-play-circle"></i> See what's inside
+            </a>
+        </div>
+
+        <!-- App Mockup -->
+        <div class="mockup-wrap">
+            <div class="mockup">
+                <!-- Chrome bar -->
+                <div class="mockup-chrome">
+                    <div class="dot dot-r"></div>
+                    <div class="dot dot-y"></div>
+                    <div class="dot dot-g"></div>
+                    <div class="mockup-url">🔒 weatherpro.app/weather?city=Tokyo</div>
+                </div>
+
+                <!-- Search row -->
+                <div class="m-search">
+                    <div class="m-input">
+                        <i class="bi bi-search" style="font-size:0.8rem;"></i>
+                        <span>Tokyo</span>
+                    </div>
+                    <button class="m-btn"><i class="bi bi-search"></i></button>
+                    <button class="m-btn-ghost"><i class="bi bi-geo-alt-fill"></i> My Location</button>
+                </div>
+
+                <!-- Hero weather card -->
+                <div class="m-hero-card">
+                    <div>
+                        <div class="m-city">Tokyo, JP</div>
+                        <div class="m-time">14:32 · Apr 06</div>
+                        <div class="m-temp" style="margin-top:0.5rem;">24°</div>
+                        <div class="m-desc">Partly Cloudy</div>
+                    </div>
+                    <div class="m-icon">⛅</div>
+                </div>
+
+                <!-- Detail tiles -->
+                <div class="m-grid">
+                    <div class="m-tile">
+                        <span class="m-tile-icon">💧</span>
+                        <div class="m-tile-label">Humidity</div>
+                        <div class="m-tile-val">68%</div>
+                    </div>
+                    <div class="m-tile">
+                        <span class="m-tile-icon">💨</span>
+                        <div class="m-tile-label">Wind</div>
+                        <div class="m-tile-val">14 km/h</div>
+                    </div>
+                    <div class="m-tile">
+                        <span class="m-tile-icon">👁</span>
+                        <div class="m-tile-label">Visibility</div>
+                        <div class="m-tile-val">10 km</div>
+                    </div>
+                    <div class="m-tile">
+                        <span class="m-tile-icon">🌿</span>
+                        <div class="m-tile-label">AQI</div>
+                        <div class="m-tile-val" style="color:#56cfb2;">Good</div>
+                    </div>
+                </div>
+
+                <!-- Forecast strip -->
+                <div class="m-forecast">
+                    <div class="m-fday">
+                        <div class="m-fday-name">Today</div>
+                        <div class="m-fday-icon">⛅</div>
+                        <div class="m-fday-hi">24°</div>
+                        <div class="m-fday-lo">18°</div>
+                    </div>
+                    <div class="m-fday">
+                        <div class="m-fday-name">Tue</div>
+                        <div class="m-fday-icon">☀️</div>
+                        <div class="m-fday-hi">27°</div>
+                        <div class="m-fday-lo">19°</div>
+                    </div>
+                    <div class="m-fday">
+                        <div class="m-fday-name">Wed</div>
+                        <div class="m-fday-icon">🌧</div>
+                        <div class="m-fday-hi">21°</div>
+                        <div class="m-fday-lo">16°</div>
+                    </div>
+                    <div class="m-fday">
+                        <div class="m-fday-name">Thu</div>
+                        <div class="m-fday-icon">⛈</div>
+                        <div class="m-fday-hi">19°</div>
+                        <div class="m-fday-lo">14°</div>
+                    </div>
+                    <div class="m-fday">
+                        <div class="m-fday-name">Fri</div>
+                        <div class="m-fday-icon">🌤</div>
+                        <div class="m-fday-hi">23°</div>
+                        <div class="m-fday-lo">17°</div>
+                    </div>
+                    <div class="m-fday">
+                        <div class="m-fday-name">Sat</div>
+                        <div class="m-fday-icon">☀️</div>
+                        <div class="m-fday-hi">26°</div>
+                        <div class="m-fday-lo">18°</div>
+                    </div>
+                    <div class="m-fday">
+                        <div class="m-fday-name">Sun</div>
+                        <div class="m-fday-icon">🌥</div>
+                        <div class="m-fday-hi">22°</div>
+                        <div class="m-fday-lo">15°</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════ STATS ══════════════════════ -->
+    <div class="stats-section reveal">
+        <div class="stats-inner">
+            <div class="stat-card">
+                <span class="stat-num" data-target="200">0</span>
+                <span class="stat-label" style="margin-top:.3rem;">K+ Cities covered</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-num">7</span>
+                <span class="stat-label">Day forecast accuracy</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-num">Live</span>
+                <span class="stat-label">AQI — PM2.5 &amp; PM10</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-num">Free</span>
+                <span class="stat-label">Forever, no credit card</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════ FEATURES ═══════════════════ -->
+    <section id="features" class="section">
+        <div class="section-tag"><i class="bi bi-stars"></i> Features</div>
+        <h2 class="section-title">Everything you need<br>to plan your day</h2>
+        <p class="section-sub">From real-time conditions to week-long outlooks and live air quality — WeatherPro puts it all in one beautiful dashboard.</p>
+
+        <div class="features-grid">
+            <div class="feat-card reveal" style="--glow1:hsl(228,80%,55%,0.08);--glow2:hsl(228,80%,55%,0.02);">
+                <div class="feat-icon-wrap" style="background:linear-gradient(135deg,hsl(228,80%,55%),hsl(228,80%,45%));">
+                    <i class="bi bi-speedometer2" style="color:white;"></i>
+                </div>
+                <h3>Real-time Updates</h3>
+                <p>Minute-by-minute data pulled from OpenWeatherMap's global satellite network — always accurate, never stale.</p>
+            </div>
+
+            <div class="feat-card reveal" style="--glow1:hsl(195,80%,50%,0.08);--glow2:hsl(195,80%,50%,0.02);">
+                <div class="feat-icon-wrap" style="background:linear-gradient(135deg,hsl(195,80%,50%),hsl(195,80%,38%));">
+                    <i class="bi bi-calendar-week" style="color:white;"></i>
+                </div>
+                <h3>7-Day Forecast</h3>
+                <p>Plan a full week ahead with highs, lows, precipitation chances, wind speed, and humidity at a glance.</p>
+            </div>
+
+            <div class="feat-card reveal" style="--glow1:hsl(145,70%,48%,0.08);--glow2:hsl(145,70%,48%,0.02);">
+                <div class="feat-icon-wrap" style="background:linear-gradient(135deg,hsl(145,65%,45%),hsl(145,65%,32%));">
+                    <i class="bi bi-wind" style="color:white;"></i>
+                </div>
+                <h3>Live Air Quality</h3>
+                <p>Know the air you breathe before you step outside. Real-time AQI with PM2.5 and PM10 particle readings.</p>
+            </div>
+
+            <div class="feat-card reveal" style="--glow1:hsl(38,90%,55%,0.08);--glow2:hsl(38,90%,55%,0.02);">
+                <div class="feat-icon-wrap" style="background:linear-gradient(135deg,hsl(38,90%,55%),hsl(38,90%,42%));">
+                    <i class="bi bi-graph-up-arrow" style="color:white;"></i>
+                </div>
+                <h3>Temperature Trends</h3>
+                <p>Beautiful interactive charts that visualise how temperatures evolve across the week — in °C or °F.</p>
+            </div>
+
+            <div class="feat-card reveal" style="--glow1:hsl(350,80%,58%,0.08);--glow2:hsl(350,80%,58%,0.02);">
+                <div class="feat-icon-wrap" style="background:linear-gradient(135deg,hsl(350,80%,55%),hsl(350,80%,42%));">
+                    <i class="bi bi-star-fill" style="color:white;"></i>
+                </div>
+                <h3>Saved Cities</h3>
+                <p>Bookmark your favourite cities and switch between them in one click — perfect for travellers and remote workers.</p>
+            </div>
+
+            <div class="feat-card reveal" style="--glow1:hsl(270,65%,58%,0.08);--glow2:hsl(270,65%,58%,0.02);">
+                <div class="feat-icon-wrap" style="background:linear-gradient(135deg,hsl(270,65%,56%),hsl(270,65%,42%));">
+                    <i class="bi bi-geo-alt-fill" style="color:white;"></i>
+                </div>
+                <h3>GPS Auto-detect</h3>
+                <p>One tap and your exact GPS coordinates are used to fetch hyper-local weather — no typing, no guessing.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════ HOW IT WORKS ═══════════════ -->
+    <section id="how-it-works" class="section" style="padding-top:0;">
+        <div class="text-center" style="margin-bottom:3rem;">
+            <div class="section-tag" style="display:inline-flex;"><i class="bi bi-map"></i> How it works</div>
+            <h2 class="section-title" style="margin-top:0.5rem;">Up and running in 30 seconds</h2>
+        </div>
+        <div class="steps-grid reveal">
+            <div class="step">
+                <div class="step-num">1</div>
+                <h4>Sign in with Google</h4>
+                <p>One click Google OAuth — no password, no forms. Your account is ready instantly.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <h4>Search any city</h4>
+                <p>Type a city name or tap "My Location" to auto-detect using your device's GPS.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <h4>Get your forecast</h4>
+                <p>See current conditions, a 7-day outlook, AQI, and a temperature trend chart immediately.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">4</div>
+                <h4>Save your cities</h4>
+                <p>Star any city to pin it in your sidebar for one-click access whenever you need it.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════ NEWS ════════════════════════ -->
+    <section class="news-section">
+        <div class="section">
+            <div class="section-tag reveal"><i class="bi bi-newspaper"></i> Weather News</div>
+            <h2 class="section-title reveal">Stay informed</h2>
+            <p class="section-sub reveal">The latest weather headlines from around the world, curated in real time.</p>
+            <div class="news-grid">
+                {% for item in news %}
+                <a href="{{ item.url }}" target="_blank" rel="noopener" class="news-card reveal">
+                    <div class="news-source">
+                        <i class="bi bi-broadcast"></i>{{ item.source }}
+                    </div>
+                    <h4>{{ item.title }}</h4>
+                    {% if item.content %}
+                    <p class="news-snippet">{{ item.content }}</p>
+                    {% endif %}
+                    <div class="news-date">
+                        <i class="bi bi-clock"></i> {{ item.date }}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════ BOTTOM CTA ════════════════ -->
+    <section class="cta-section reveal">
+        <h2>Ready to check the weather?</h2>
+        <p>Join thousands of users who trust WeatherPro for accurate, real-time forecasts.</p>
+        <a href="{{ url_for('login') }}" class="btn-primary" style="font-size:1.05rem;padding:1rem 2.5rem;">
+            <i class="bi bi-google"></i> Get Started — It's Free
+        </a>
+    </section>
+
+    <!-- ══════════════════════ FOOTER ════════════════════ -->
+    <footer>
+        <p>
+            <i class="bi bi-cloud-sun-fill" style="color:var(--p);"></i>
+            <strong>WeatherPro</strong>
+            &nbsp;·&nbsp; Powered by <a href="https://openweathermap.org" target="_blank">OpenWeatherMap</a>
+            &nbsp;·&nbsp; Built with <a href="https://flask.palletsprojects.com" target="_blank">Flask</a>
+            &nbsp;·&nbsp; © 2025
+        </p>
+    </footer>
+
+</div><!-- /page -->
+
+<script>
+// ── Scroll Reveal ──────────────────────────────────────
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            observer.unobserve(e.target);
+        }
+    });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach((el, i) => {
+    el.style.transitionDelay = (i % 4 * 0.08) + 's';
+    observer.observe(el);
+});
+
+// ── Animated Counter ──────────────────────────────────
+function animateCounter(el) {
+    const target = parseInt(el.dataset.target);
+    if (isNaN(target)) return;
+    const dur = 1800;
+    const step = 16;
+    const inc  = target / (dur / step);
+    let cur = 0;
+    const timer = setInterval(() => {
+        cur = Math.min(cur + inc, target);
+        el.textContent = Math.floor(cur) + (cur >= target ? 'K+' : '');
+        if (cur >= target) clearInterval(timer);
+    }, step);
+}
+
+const countObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            document.querySelectorAll('[data-target]').forEach(animateCounter);
+            countObserver.disconnect();
+        }
+    });
+}, { threshold: 0.3 });
+
+const statsEl = document.querySelector('.stats-section');
+if (statsEl) countObserver.observe(statsEl);
+
+// ── Smooth navbar ─────────────────────────────────────
+window.addEventListener('scroll', () => {
+    const nav = document.querySelector('.navbar');
+    if (window.scrollY > 40) {
+        nav.style.background = 'rgba(8,10,18,0.85)';
+    } else {
+        nav.style.background = 'rgba(12,14,22,0.6)';
+    }
+}, { passive: true });
+</script>
+</body>
+</html>

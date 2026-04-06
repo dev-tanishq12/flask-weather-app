@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeatherPro{% if weather %} — {{ weather.city }}{% endif %}</title>
+    <meta name="description" content="Real-time weather dashboard with 7-day forecast, AQI, and temperature trends.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* ── Tokens ─────────────────────────────────────────── */
+        :root {
+            --h: 228;
+            --p:  hsl(var(--h),88%,62%);
+            --p2: hsl(var(--h),88%,48%);
+            --a:  hsl(195,90%,58%);
+            --a2: hsl(270,70%,62%);
+            --rose: hsl(350,85%,62%);
+            --amber: hsl(38,95%,58%);
+
+            --bg:      hsl(222,30%,7%);
+            --bg2:     hsl(222,28%,10%);
+            --surf:    hsl(222,25%,14%);
+            --surf2:   hsl(222,22%,18%);
+            --glass:   rgba(255,255,255,0.04);
+            --gb:      rgba(255,255,255,0.08);
+            --text:    hsl(220,25%,95%);
+            --text2:   hsl(220,15%,70%);
+            --text3:   hsl(220,12%,48%);
+            --border:  rgba(255,255,255,0.08);
+            --border2: rgba(255,255,255,0.14);
+
+            --r: 18px;
+            --r2: 12px;
+            --nav: 70px;
+
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+            --shadow-md: 0 8px 28px rgba(0,0,0,0.4);
+            --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
+            --shadow-glow: 0 8px 32px hsl(var(--h),85%,60%,0.35);
+        }
+
+        /* ── Reset ──────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.65;
+        }
+
+        ::selection { background: hsl(var(--h),80%,60%,0.35); }
+
+        /* ── Animated Background ────────────────────────────── */
+        .bg-canvas {
+            position: fixed; inset: 0; z-index: 0;
+            pointer-events: none; overflow: hidden;
+        }
+
+        .orb {
+            position: absolute; border-radius: 50%;
+            filter: blur(80px); opacity: 0.45;
+            animation: drift linear infinite;
+        }
+
+        .orb-1 {
+            width: 550px; height: 550px;
+            background: radial-gradient(circle, hsl(var(--h),80%,55%) 0%, transparent 70%);
+            top: -180px; left: -120px;
+            animation-duration: 22s;
+        }
+
+        .orb-2 {
+            width: 450px; height: 450px;
+            background: radial-gradient(circle, hsl(195,80%,52%) 0%, transparent 70%);
+            bottom: -120px; right: -80px;
+            animation-duration: 28s;
+            animation-direction: reverse;
+        }
+
+        .orb-3 {
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, hsl(270,70%,58%) 0%, transparent 70%);
+            top: 40%; left: 55%;
+            transform: translate(-50%, -50%);
+            animation-duration: 35s; opacity: 0.25;
+        }
+
+        @keyframes drift {
+            0%   { transform: translate(0,0) scale(1); }
+            33%  { transform: translate(40px,-30px) scale(1.05); }
+            66%  { transform: translate(-20px,40px) scale(0.97); }
+            100% { transform: translate(0,0) scale(1); }
+        }
+
+        .stars {
+            position: absolute; inset: 0;
+            background-image:
+                radial-gradient(1px 1px at 15% 10%, rgba(255,255,255,0.6) 0%, transparent 100%),
+                radial-gradient(1px 1px at 72% 8%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                radial-gradient(1.5px 1.5px at 33% 35%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(1px 1px at 88% 42%, rgba(255,255,255,0.6) 0%, transparent 100%),
+                radial-gradient(1px 1px at 54% 68%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                radial-gradient(1px 1px at 8% 78%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                radial-gradient(1.5px 1.5px at 92% 85%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(1px 1px at 44% 92%, rgba(255,255,255,0.5) 0%, transparent 100%);
+            animation: twinkle 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes twinkle { from { opacity:0.6; } to { opacity:1; } }
+
+        /* ── Navbar ─────────────────────────────────────────── */
+        .navbar {
+            position: fixed; top: 0; left: 0; right: 0;
+            z-index: 900; height: var(--nav);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 2rem;
+            backdrop-filter: blur(24px) saturate(160%);
+            -webkit-backdrop-filter: blur(24px) saturate(160%);
+            background: rgba(12,14,22,0.6);
+            border-bottom: 1px solid var(--border);
+            transition: background 0.3s;
+        }
+
+        .brand {
+            display: flex; align-items: center; gap: 0.6rem;
+            text-decoration: none; color: var(--text);
+            font-size: 1.2rem; font-weight: 800; letter-spacing: -0.3px;
+        }
+
+        .brand-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--p), var(--a));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; color: white;
+            box-shadow: 0 4px 18px hsl(var(--h),80%,55%,0.45);
+        }
+
+        .nav-right { display: flex; align-items: center; gap: 0.6rem; }
+
+        .unit-toggle {
+            display: flex;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border2);
+            border-radius: 8px; overflow: hidden;
+        }
+
+        .unit-btn {
+            background: transparent; border: none;
+            padding: 0.3rem 0.7rem;
+            color: var(--text3); font-weight: 700; font-size: 0.8rem;
+            cursor: pointer; transition: all 0.2s; font-family: inherit;
+        }
+
+        .unit-btn.active {
+            background: var(--p); color: white; border-radius: 7px;
+        }
+
+        .icon-btn {
+            width: 36px; height: 36px;
+            border: 1px solid var(--border2);
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; color: var(--text2);
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover { background: var(--gb); color: var(--text); transform: translateY(-1px); }
+
+        .user-chip {
+            display: flex; align-items: center; gap: 0.4rem;
+            padding: 0.25rem 0.7rem 0.25rem 0.3rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border2);
+            border-radius: 50px;
+            font-size: 0.8rem; font-weight: 600; color: var(--text2);
+        }
+
+        .user-avatar {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--p), var(--a));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; color: white; font-weight: 700;
+        }
+
+        .logout-btn {
+            display: flex; align-items: center; gap: 0.3rem;
+            padding: 0.35rem 0.8rem;
+            background: hsl(350,40%,18%); border: 1px solid hsl(350,40%,28%);
+            color: var(--rose); border-radius: 8px;
+            font-size: 0.8rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; font-family: inherit;
+        }
+
+        .logout-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px hsl(350,85%,60%,0.3); }
+
+        /* ── Page Layout ───────────────────────────────────── */
+        .page {
+            position: relative; z-index: 1;
+            max-width: 1320px; margin: 0 auto;
+            padding: calc(var(--nav) + 1.5rem) 1.5rem 3rem;
+            display: grid; grid-template-columns: 1fr 340px;
+            gap: 1.5rem;
+        }
+
+        .main-col, .side-col { min-width: 0; }
+
+        /* ── Card ───────────────────────────────────────────── */
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(16px) saturate(160%);
+            -webkit-backdrop-filter: blur(16px) saturate(160%);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+            position: relative; overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--border2); }
+
+        /* ── Reveal Animation ──────────────────────────────── */
+        .reveal {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .reveal.visible { opacity: 1; transform: none; }
+
+        @keyframes fadeUp {
+            from { opacity:0; transform:translateY(24px); }
+            to   { opacity:1; transform:none; }
+        }
+
+        /* ── Search Bar ────────────────────────────────────── */
+        .search-wrap {
+            display: flex; gap: 0.6rem;
+            margin-bottom: 1.25rem; flex-wrap: wrap;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .search-field { flex: 1; min-width: 200px; position: relative; }
+
+        .search-field i {
+            position: absolute; left: 1rem; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text3); pointer-events: none; font-size: 1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            border: 2px solid var(--border2);
+            border-radius: var(--r2);
+            padding: 0.7rem 1rem 0.7rem 2.75rem;
+            font-size: 0.95rem;
+            background: rgba(255,255,255,0.04);
+            color: var(--text); font-family: inherit;
+            outline: none;
+            transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+        }
+
+        .search-input::placeholder { color: var(--text3); }
+        .search-input:focus {
+            border-color: var(--p);
+            box-shadow: 0 0 0 4px hsl(var(--h),85%,60%,0.15);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            border: none; border-radius: var(--r2);
+            font-family: inherit; font-weight: 700; cursor: pointer;
+            padding: 0.7rem 1.2rem; font-size: 0.9rem;
+            transition: all 0.25s; white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--p), var(--p2));
+            color: white; box-shadow: var(--shadow-glow);
+        }
+
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px hsl(var(--h),85%,60%,0.45); }
+
+        .btn-ghost {
+            background: rgba(255,255,255,0.06);
+            border: 1.5px solid var(--border2);
+            color: var(--text2);
+        }
+
+        .btn-ghost:hover { border-color: var(--p); color: var(--p); transform: translateY(-2px); }
+
+        /* ── Flash Messages ────────────────────────────────── */
+        .flash {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.85rem 1.1rem;
+            border-radius: var(--r2);
+            margin-bottom: 1rem;
+            font-size: 0.9rem; font-weight: 500;
+            animation: slideDown 0.3s ease;
+            backdrop-filter: blur(8px);
+        }
+
+        @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+
+        .flash-danger  { background:hsl(350,35%,18%); border:1px solid hsl(350,35%,28%); color:hsl(350,70%,70%); }
+        .flash-success { background:hsl(145,35%,16%); border:1px solid hsl(145,35%,26%); color:hsl(145,65%,60%); }
+        .flash-info    { background:hsl(205,35%,16%); border:1px solid hsl(205,35%,26%); color:hsl(205,70%,64%); }
+
+        .flash-close {
+            margin-left: auto; background: none; border: none;
+            cursor: pointer; color: inherit; font-size: 1rem; opacity: 0.6; line-height: 1;
+        }
+        .flash-close:hover { opacity: 1; }
+
+        /* ── Hero Weather Card ─────────────────────────────── */
+        .hero-card {
+            background: linear-gradient(145deg,
+                hsl(var(--h),75%,44%) 0%,
+                hsl(195,80%,42%) 60%,
+                hsl(270,55%,45%) 100%);
+            border: none !important;
+            position: relative; overflow: hidden;
+            color: white;
+            animation: fadeUp 0.5s 0.1s ease both;
+        }
+
+        .hero-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(circle at 85% 15%, rgba(255,255,255,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 10% 85%, rgba(255,255,255,0.08) 0%, transparent 40%);
+        }
+
+        .hero-card::after {
+            content: '';
+            position: absolute; top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+
+        .hero-card:hover { transform: none; box-shadow: var(--shadow-lg); }
+
+        .hero-inner {
+            position: relative; z-index: 1;
+            display: grid; grid-template-columns: 1fr auto;
+            align-items: start; gap: 1rem;
+        }
+
+        .hero-location {
+            font-size: 1.9rem; font-weight: 800;
+            letter-spacing: -0.5px; line-height: 1.15;
+            margin-bottom: 0.2rem;
+        }
+
+        .hero-sub { font-size: 0.85rem; opacity: 0.8; margin-bottom: 1.25rem; }
+
+        .hero-temp {
+            font-size: 6rem; font-weight: 900;
+            letter-spacing: -4px; line-height: 1;
+            text-shadow: 0 4px 30px rgba(0,0,0,0.2);
+        }
+
+        .hero-temp sup {
+            font-size: 2rem; font-weight: 700;
+            letter-spacing: 0; vertical-align: top;
+            margin-top: 0.6rem; display: inline-block;
+        }
+
+        .hero-desc {
+            font-size: 1.05rem; font-weight: 500;
+            opacity: 0.9; text-transform: capitalize; margin-top: 0.4rem;
+        }
+
+        .hero-right {
+            display: flex; flex-direction: column;
+            align-items: flex-end; gap: 0.75rem;
+        }
+
+        .weather-icon-wrap img {
+            width: 110px; height: 110px;
+            filter: drop-shadow(0 8px 20px rgba(0,0,0,0.25));
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+        .hero-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.35rem 0.85rem; border-radius: 50px;
+            font-size: 0.82rem; font-weight: 600;
+        }
+
+        .badge-glass {
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: white; backdrop-filter: blur(6px);
+        }
+
+        .aqi-badge { font-size: 0.8rem; font-weight: 700; padding: 0.32rem 0.8rem; border-radius: 50px; }
+        .aqi-good     { background:hsl(145,65%,22%); color:hsl(145,65%,72%); }
+        .aqi-fair     { background:hsl(195,70%,20%); color:hsl(195,70%,72%); }
+        .aqi-moderate { background:hsl(40,70%,20%);  color:hsl(40,90%,68%); }
+        .aqi-poor     { background:hsl(15,65%,20%);  color:hsl(15,85%,68%); }
+        .aqi-verypoor { background:hsl(350,60%,20%); color:hsl(350,80%,68%); }
+
+        .fav-btn {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.4rem 1rem; border-radius: 50px;
+            font-size: 0.82rem; font-weight: 700; cursor: pointer;
+            background: rgba(255,255,255,0.18);
+            border: 1.5px solid rgba(255,255,255,0.35);
+            color: white; font-family: inherit; transition: all 0.2s;
+        }
+
+        .fav-btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-1px); }
+        .fav-btn.saved { background: rgba(255,220,80,0.2); border-color: rgba(255,220,80,0.45); }
+
+        /* ── Section Labels ────────────────────────────────── */
+        .section-label {
+            font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text3);
+            margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+
+        .section-label::after {
+            content: ''; flex: 1; height: 1px;
+            background: linear-gradient(90deg, var(--border2) 0%, transparent 100%);
+        }
+
+        /* ── Detail Grid ───────────────────────────────────── */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.85rem;
+        }
+
+        .detail-tile {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--r2);
+            padding: 1rem 0.8rem;
+            text-align: center;
+            transition: all 0.3s; cursor: default;
+            position: relative; overflow: hidden;
+        }
+
+        .detail-tile::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, hsl(var(--h),80%,55%,0.06), transparent);
+            opacity: 0; transition: opacity 0.3s;
+        }
+
+        .detail-tile:hover::before { opacity: 1; }
+        .detail-tile:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            border-color: hsl(var(--h),60%,50%,0.3);
+        }
+
+        .detail-tile .tile-icon {
+            font-size: 1.4rem; margin-bottom: 0.45rem; display: block;
+            background: linear-gradient(135deg, var(--p), var(--a));
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+
+        .detail-tile .tile-label {
+            font-size: 0.68rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--text3); margin-bottom: 0.3rem;
+        }
+
+        .detail-tile .tile-val { font-size: 1.05rem; font-weight: 800; color: var(--text); }
+
+        /* ── Forecast Strip ────────────────────────────────── */
+        .forecast-strip {
+            display: flex; gap: 0.75rem;
+            overflow-x: auto; padding-bottom: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border2) transparent;
+        }
+
+        .forecast-card {
+            flex-shrink: 0; min-width: 92px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--r2);
+            padding: 0.9rem 0.65rem;
+            text-align: center; cursor: default;
+            transition: all 0.3s;
+        }
+
+        .forecast-card:hover {
+            border-color: hsl(var(--h),60%,50%,0.4);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .forecast-card.today {
+            background: linear-gradient(145deg, hsl(var(--h),50%,20%), hsl(195,50%,20%));
+            border-color: hsl(var(--h),40%,32%);
+        }
+
+        .fc-day { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-bottom: 0.3rem; }
+        .fc-icon img { width: 40px; height: 40px; }
+        .fc-hi { font-size: 0.98rem; font-weight: 800; color: var(--rose); }
+        .fc-lo { font-size: 0.82rem; font-weight: 600; color: var(--text3); }
+        .fc-hum { font-size: 0.68rem; color: var(--text3); margin-top: 0.35rem; display: flex; align-items: center; justify-content: center; gap: 2px; }
+
+        /* ── Chart ──────────────────────────────────────────── */
+        .chart-wrap { position: relative; height: 200px; margin-top: 0.5rem; }
+
+        /* ── Empty State ───────────────────────────────────── */
+        .empty-state { text-align: center; padding: 4rem 2rem; }
+
+        .empty-state .empty-icon {
+            font-size: 5rem;
+            background: linear-gradient(135deg, var(--p), var(--a));
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+            display: block; margin-bottom: 1.25rem;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .empty-state h3 {
+            font-size: 1.3rem; font-weight: 700; color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p { color: var(--text3); font-size: 0.9rem; }
+
+        .quick-cities {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            justify-content: center; margin-top: 1.5rem;
+        }
+
+        .city-chip {
+            padding: 0.4rem 1rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border2);
+            border-radius: 50px;
+            font-size: 0.82rem; font-weight: 600; color: var(--text2);
+            text-decoration: none; transition: all 0.25s;
+        }
+
+        .city-chip:hover {
+            background: var(--p); border-color: var(--p);
+            color: white; transform: translateY(-2px);
+            box-shadow: 0 6px 18px hsl(var(--h),80%,55%,0.3);
+        }
+
+        /* ── Sidebar ───────────────────────────────────────── */
+        .side-col .card { padding: 1.25rem; }
+
+        .fav-list { display: flex; flex-direction: column; gap: 0.4rem; }
+
+        .fav-item {
+            display: flex; align-items: center;
+            border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--border);
+            transition: all 0.25s;
+        }
+
+        .fav-item:hover { border-color: var(--p); }
+
+        .fav-link {
+            flex: 1; display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.55rem 0.75rem;
+            text-decoration: none; color: var(--text2);
+            font-size: 0.88rem; font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .fav-link:hover { color: var(--p); }
+        .fav-link i { color: var(--p); font-size: 0.75rem; }
+
+        .fav-del {
+            padding: 0.55rem 0.65rem;
+            background: none; border: none;
+            border-left: 1px solid var(--border);
+            cursor: pointer; color: var(--text3);
+            transition: all 0.2s; font-size: 0.85rem;
+        }
+
+        .fav-del:hover { color: var(--rose); background: hsl(350,35%,15%); }
+
+        /* ── News ──────────────────────────────────────────── */
+        .news-item {
+            padding: 0.9rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .news-item:first-child { padding-top: 0; }
+        .news-item:last-child  { border-bottom: none; padding-bottom: 0; }
+
+        .news-link { text-decoration: none; color: inherit; display: block; }
+
+        .news-source-tag {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            font-size: 0.68rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--a); margin-bottom: 0.3rem;
+        }
+
+        .news-title {
+            font-size: 0.87rem; font-weight: 600; line-height: 1.4;
+            color: var(--text); transition: color 0.2s;
+        }
+
+        .news-link:hover .news-title { color: var(--p); }
+        .news-date { font-size: 0.73rem; color: var(--text3); margin-top: 0.3rem; }
+
+        /* ── Pro Tip Card ──────────────────────────────────── */
+        .tip-card {
+            background: linear-gradient(145deg, hsl(var(--h),75%,44%) 0%, hsl(195,80%,42%) 60%, hsl(270,55%,45%) 100%);
+            border: none !important; color: white;
+            position: relative; overflow: hidden;
+        }
+
+        .tip-card::before {
+            content: '';
+            position: absolute; top: -30px; right: -30px;
+            width: 100px; height: 100px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+
+        .tip-card:hover { transform: translateY(-4px); }
+
+        /* ── Loader ─────────────────────────────────────────── */
+        .loader-overlay {
+            display: none; position: fixed; inset: 0;
+            background: hsl(222,30%,7%,0.6);
+            backdrop-filter: blur(8px); z-index: 9999;
+            align-items: center; justify-content: center;
+        }
+
+        .loader-overlay.show { display: flex; }
+
+        .loader-spinner {
+            width: 52px; height: 52px;
+            border: 3.5px solid rgba(255,255,255,0.12);
+            border-top-color: var(--p);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Responsive ────────────────────────────────────── */
+        @media (max-width: 900px) {
+            .page { grid-template-columns: 1fr; padding-top: calc(var(--nav) + 1rem); }
+            .side-col { order: -1; }
+            .hero-inner { grid-template-columns: 1fr; }
+            .hero-right { flex-direction: row; align-items: center; }
+            .hero-temp { font-size: 4.5rem; }
+        }
+
+        @media (max-width: 540px) {
+            .navbar { padding: 0 1rem; }
+            .page { padding-inline: 1rem; }
+            .user-chip span { display: none; }
+            .hero-location { font-size: 1.4rem; }
+            .hero-temp { font-size: 3.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Animated background -->
+<div class="bg-canvas">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="stars"></div>
+</div>
+
+<!-- Loader -->
+<div class="loader-overlay" id="loader">
+    <div class="loader-spinner"></div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <a href="{{ url_for('weather') }}" class="brand">
+        <div class="brand-icon"><i class="bi bi-cloud-sun-fill"></i></div>
+        WeatherPro
+    </a>
+    <div class="nav-right">
+        <div class="unit-toggle">
+            <button class="unit-btn active" id="btn-c" onclick="setUnit('C')">°C</button>
+            <button class="unit-btn" id="btn-f" onclick="setUnit('F')">°F</button>
+        </div>
+        <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">
+            <i class="bi bi-sun-fill" id="theme-icon"></i>
+        </button>
+        {% if current_user.is_authenticated %}
+        <div class="user-chip">
+            <div class="user-avatar">{{ current_user.name[0]|upper }}</div>
+            <span>{{ current_user.name.split(' ')[0] }}</span>
+        </div>
+        <form action="{{ url_for('logout') }}" method="POST" style="display:inline;">
+            <button type="submit" class="logout-btn">
+                <i class="bi bi-box-arrow-right"></i>Logout
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</nav>
+
+<div class="page">
+    <!-- ── Main Column ── -->
+    <div class="main-col">
+
+        <!-- Search -->
+        <form method="GET" action="{{ url_for('weather') }}" class="search-wrap">
+            <div class="search-field">
+                <i class="bi bi-search"></i>
+                <input class="search-input" type="text" name="city"
+                    placeholder="Search any city in the world…"
+                    value="{{ city }}" autocomplete="off" id="city-input">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Search
+            </button>
+            <button type="button" class="btn btn-ghost" id="loc-btn" onclick="getLocation()">
+                <i class="bi bi-geo-alt-fill"></i> My Location
+            </button>
+        </form>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}
+        <div class="flash flash-{{ category }}">
+            <i class="bi bi-{% if category == 'danger' %}exclamation-triangle-fill{% elif category == 'success' %}check-circle-fill{% else %}info-circle-fill{% endif %}"></i>
+            {{ message }}
+            <button class="flash-close" onclick="this.parentElement.remove()">&#x2715;</button>
+        </div>
+        {% endfor %}{% endif %}{% endwith %}
+
+        {% if weather %}
+
+        <!-- Hero Card -->
+        <div class="card hero-card reveal">
+            <div class="hero-inner">
+                <div>
+                    <div class="hero-location">
+                        {{ weather.city }}{% if weather.country %}<span style="opacity:0.65;font-weight:500;font-size:1.3rem;">, {{ weather.country }}</span>{% endif %}
+                    </div>
+                    <div class="hero-sub">
+                        <i class="bi bi-clock"></i> {{ weather.time }}
+                        &nbsp;·&nbsp;
+                        <i class="bi bi-arrow-up"></i><span class="feels-temp" data-celsius="{{ weather.temp_max }}">{{ weather.temp_max }}°</span>
+                        <i class="bi bi-arrow-down" style="margin-left:2px;"></i><span class="feels-temp" data-celsius="{{ weather.temp_min }}">{{ weather.temp_min }}°</span>
+                    </div>
+                    <div class="hero-temp" id="main-temp" data-celsius="{{ weather.temperature }}">
+                        {{ weather.temperature }}<sup>°C</sup>
+                    </div>
+                    <div class="hero-desc">{{ weather.description }}</div>
+                    <div class="hero-badges">
+                        <span class="badge badge-glass">
+                            <i class="bi bi-thermometer-half"></i>
+                            Feels <span data-celsius="{{ weather.feels_like }}" class="feels-temp">{{ weather.feels_like }}°C</span>
+                        </span>
+                        <span class="badge badge-glass">
+                            <i class="bi bi-droplet-fill"></i>{{ weather.humidity }}%
+                        </span>
+                        <span class="badge badge-glass">
+                            <i class="bi bi-wind"></i>{{ weather.wind_speed }} km/h
+                        </span>
+                        {% if weather.aqi %}
+                        <span class="aqi-badge aqi-{{ weather.aqi.label|lower|replace(' ','') }}">
+                            <i class="bi bi-lungs-fill"></i> AQI: {{ weather.aqi.label }}
+                        </span>
+                        {% endif %}
+                        {% if weather.city in favorites %}
+                        <form action="{{ url_for('remove_favorite') }}" method="POST" style="display:inline;">
+                            <input type="hidden" name="city" value="{{ weather.city }}">
+                            <button type="submit" class="fav-btn saved">
+                                <i class="bi bi-star-fill"></i> Saved
+                            </button>
+                        </form>
+                        {% else %}
+                        <form action="{{ url_for('add_favorite') }}" method="POST" style="display:inline;">
+                            <input type="hidden" name="city" value="{{ weather.city }}">
+                            <button type="submit" class="fav-btn">
+                                <i class="bi bi-star"></i> Save City
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="hero-right">
+                    <div class="weather-icon-wrap">
+                        <img src="https://openweathermap.org/img/wn/{{ weather.icon }}@2x.png" alt="{{ weather.description }}" title="{{ weather.description }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Tiles -->
+        <div class="card reveal">
+            <div class="section-label"><i class="bi bi-grid-3x3-gap-fill"></i> Conditions</div>
+            <div class="detail-grid">
+                <div class="detail-tile">
+                    <i class="bi bi-droplet-fill tile-icon"></i>
+                    <div class="tile-label">Humidity</div>
+                    <div class="tile-val">{{ weather.humidity }}%</div>
+                </div>
+                <div class="detail-tile">
+                    <i class="bi bi-wind tile-icon"></i>
+                    <div class="tile-label">Wind</div>
+                    <div class="tile-val">{{ weather.wind_speed }}<small style="font-size:0.65rem;font-weight:600;opacity:0.6;"> km/h</small></div>
+                </div>
+                <div class="detail-tile">
+                    <i class="bi bi-cloud-fill tile-icon"></i>
+                    <div class="tile-label">Cloud</div>
+                    <div class="tile-val">{{ weather.cloudiness }}%</div>
+                </div>
+                <div class="detail-tile">
+                    <i class="bi bi-speedometer2 tile-icon"></i>
+                    <div class="tile-label">Pressure</div>
+                    <div class="tile-val">{{ weather.pressure }}<small style="font-size:0.65rem;font-weight:600;opacity:0.6;"> hPa</small></div>
+                </div>
+                <div class="detail-tile">
+                    <i class="bi bi-eye-fill tile-icon"></i>
+                    <div class="tile-label">Visibility</div>
+                    <div class="tile-val">{{ (weather.visibility // 1000) if weather.visibility >= 1000 else weather.visibility }}<small style="font-size:0.65rem;font-weight:600;opacity:0.6;"> km</small></div>
+                </div>
+                <div class="detail-tile">
+                    <i class="bi bi-sunrise-fill tile-icon"></i>
+                    <div class="tile-label">Sunrise</div>
+                    <div class="tile-val">{{ weather.sunrise }}</div>
+                </div>
+                <div class="detail-tile">
+                    <i class="bi bi-sunset-fill tile-icon"></i>
+                    <div class="tile-label">Sunset</div>
+                    <div class="tile-val">{{ weather.sunset }}</div>
+                </div>
+                {% if weather.aqi %}
+                <div class="detail-tile">
+                    <i class="bi bi-lungs-fill tile-icon"></i>
+                    <div class="tile-label">PM2.5</div>
+                    <div class="tile-val">{{ weather.aqi.pm25 }}<small style="font-size:0.65rem;font-weight:600;opacity:0.6;"> µg</small></div>
+                </div>
+                <div class="detail-tile">
+                    <i class="bi bi-filter tile-icon"></i>
+                    <div class="tile-label">PM10</div>
+                    <div class="tile-val">{{ weather.aqi.pm10 }}<small style="font-size:0.65rem;font-weight:600;opacity:0.6;"> µg</small></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 7-Day Forecast -->
+        {% if weather.forecast %}
+        <div class="card reveal">
+            <div class="section-label"><i class="bi bi-calendar-week"></i> 7-Day Forecast</div>
+            <div class="forecast-strip">
+                {% for day in weather.forecast %}
+                <div class="forecast-card {% if loop.first %}today{% endif %}">
+                    <div class="fc-day">{{ day.day if not loop.first else 'Today' }}</div>
+                    <div class="fc-icon">
+                        <img src="https://openweathermap.org/img/wn/{{ day.icon }}.png" alt="{{ day.description }}">
+                    </div>
+                    <div class="fc-hi forecast-max" data-celsius="{{ day.temp_max }}">{{ day.temp_max }}°</div>
+                    <div class="fc-lo forecast-min" data-celsius="{{ day.temp_min }}">{{ day.temp_min }}°</div>
+                    <div class="fc-hum"><i class="bi bi-droplet-fill" style="font-size:0.6rem;color:var(--a)"></i>{{ day.humidity }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Temperature Chart -->
+        <div class="card reveal">
+            <div class="section-label"><i class="bi bi-graph-up-arrow"></i> Temperature Trend</div>
+            <div class="chart-wrap">
+                <canvas id="forecastChart"
+                    data-labels='{{ weather.forecast | map(attribute="day") | list | tojson | safe }}'
+                    data-max='{{ weather.forecast | map(attribute="temp_max") | list | tojson | safe }}'
+                    data-min='{{ weather.forecast | map(attribute="temp_min") | list | tojson | safe }}'
+                ></canvas>
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+
+        <!-- Empty state -->
+        <div class="card empty-state reveal">
+            <i class="bi bi-cloud-sun-fill empty-icon"></i>
+            <h3>What's the weather like today?</h3>
+            <p>Search for any city, or tap "My Location" for instant local weather.</p>
+            <div class="quick-cities">
+                {% set popular = ['London','New York','Tokyo','Sydney','Mumbai','Paris','Dubai','Singapore'] %}
+                {% for c in popular %}
+                <a href="{{ url_for('weather', city=c) }}" class="city-chip">{{ c }}</a>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% endif %}
+    </div>
+
+    <!-- ── Sidebar ── -->
+    <div class="side-col">
+
+        <!-- Saved Cities -->
+        {% if favorites %}
+        <div class="card reveal">
+            <div class="section-label"><i class="bi bi-star-fill" style="color:var(--amber);"></i> Saved Cities</div>
+            <div class="fav-list">
+                {% for fav in favorites %}
+                <div class="fav-item">
+                    <a href="{{ url_for('weather', city=fav) }}" class="fav-link">
+                        <i class="bi bi-geo-alt-fill"></i>{{ fav }}
+                    </a>
+                    <form action="{{ url_for('remove_favorite') }}" method="POST">
+                        <input type="hidden" name="city" value="{{ fav }}">
+                        <button type="submit" class="fav-del" title="Remove">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Weather News -->
+        <div class="card reveal">
+            <div class="section-label"><i class="bi bi-newspaper"></i> Weather News</div>
+            {% for item in news %}
+            <div class="news-item">
+                <a href="{{ item.url }}" target="_blank" rel="noopener" class="news-link">
+                    <div class="news-source-tag"><i class="bi bi-broadcast"></i>{{ item.source }}</div>
+                    <div class="news-title">{{ item.title }}</div>
+                    <div class="news-date"><i class="bi bi-clock"></i> {{ item.date }}</div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pro Tip Card -->
+        <div class="card tip-card reveal">
+            <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:0.8;margin-bottom:0.6rem;">
+                <i class="bi bi-lightning-charge-fill"></i> Pro Tip
+            </div>
+            <div style="font-size:0.9rem;font-weight:600;line-height:1.5;opacity:0.95;">
+                Use the <strong>My Location</strong> button for instant weather at your GPS coordinates — no typing needed.
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// ── Theme ──────────────────────────────────────────────────────
+const html = document.documentElement;
+
+function toggleTheme() {
+    const dark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', dark ? '' : 'dark');
+    document.getElementById('theme-icon').className = dark ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
+    localStorage.setItem('theme', dark ? 'light' : 'dark');
+    if (window.forecastChart) redrawChart();
+}
+
+(function () {
+    const saved = localStorage.getItem('theme') || 'dark';
+    if (saved === 'dark') {
+        html.setAttribute('data-theme', 'dark');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.className = 'bi bi-sun-fill';
+    } else {
+        html.setAttribute('data-theme', '');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.className = 'bi bi-moon-stars-fill';
+    }
+})();
+
+// ── Scroll Reveal ──────────────────────────────────────────────
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
+}, { threshold: 0.08 });
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+});
+
+// ── Unit Toggle ────────────────────────────────────────────────
+let currentUnit = 'C';
+
+function toF(c) { return +(c * 9/5 + 32).toFixed(1); }
+
+function setUnit(unit) {
+    currentUnit = unit;
+    document.getElementById('btn-c').classList.toggle('active', unit === 'C');
+    document.getElementById('btn-f').classList.toggle('active', unit === 'F');
+
+    const mainEl = document.getElementById('main-temp');
+    if (mainEl) {
+        const c = parseFloat(mainEl.dataset.celsius);
+        const val = unit === 'C' ? c : toF(c);
+        mainEl.innerHTML = val + `<sup>°${unit}</sup>`;
+    }
+
+    document.querySelectorAll('[data-celsius]').forEach(el => {
+        if (el.id === 'main-temp') return;
+        const c = parseFloat(el.dataset.celsius);
+        const suffix = el.classList.contains('forecast-max') || el.classList.contains('forecast-min') ? '°' : `°${unit}`;
+        el.textContent = (unit === 'C' ? c : toF(c)) + suffix;
+    });
+
+    document.querySelectorAll('.feels-temp').forEach(el => {
+        const c = parseFloat(el.dataset.celsius);
+        el.textContent = (unit === 'C' ? c : toF(c)) + `°${unit}`;
+    });
+
+    if (window.forecastChart) redrawChart();
+}
+
+// ── Geolocation ────────────────────────────────────────────────
+function getLocation() {
+    if (!navigator.geolocation) { showToast('Geolocation not supported.', 'danger'); return; }
+    const btn = document.getElementById('loc-btn');
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin-icon"></i> Locating…';
+    btn.disabled = true;
+    document.getElementById('loader').classList.add('show');
+
+    navigator.geolocation.getCurrentPosition(pos => {
+        fetch('/weather/location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.city) {
+                window.location.href = `/weather?city=${encodeURIComponent(data.city)}`;
+            } else {
+                document.getElementById('loader').classList.remove('show');
+                showToast('Could not determine city. Try searching manually.', 'danger');
+                resetLocBtn(btn);
+            }
+        })
+        .catch(() => {
+            document.getElementById('loader').classList.remove('show');
+            showToast('Location fetch failed. Please try again.', 'danger');
+            resetLocBtn(btn);
+        });
+    }, () => {
+        document.getElementById('loader').classList.remove('show');
+        showToast('Location permission denied.', 'danger');
+        resetLocBtn(btn);
+    });
+}
+
+function resetLocBtn(btn) {
+    btn.innerHTML = '<i class="bi bi-geo-alt-fill"></i> My Location';
+    btn.disabled = false;
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+function showToast(msg, type) {
+    const d = document.createElement('div');
+    d.className = `flash flash-${type}`;
+    d.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;min-width:280px;max-width:380px;box-shadow:var(--shadow-lg);';
+    d.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i>${msg}<button class="flash-close" onclick="this.parentElement.remove()">&#x2715;</button>`;
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 6000);
+}
+
+// ── Chart ──────────────────────────────────────────────────────
+function buildChart() {
+    const canvas = document.getElementById('forecastChart');
+    if (!canvas || !canvas.dataset.labels) return;
+
+    const labels  = JSON.parse(canvas.dataset.labels || '[]');
+    const maxData = JSON.parse(canvas.dataset.max || '[]');
+    const minData = JSON.parse(canvas.dataset.min || '[]');
+
+    const textColor = 'rgba(200,205,220,0.7)';
+    const gridColor = 'rgba(255,255,255,0.05)';
+
+    if (window.forecastChart) {
+        window.forecastChart.destroy();
+        window.forecastChart = null;
+    }
+
+    window.forecastChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: `High °${currentUnit}`,
+                    data: currentUnit === 'C' ? maxData : maxData.map(toF),
+                    borderColor: 'hsl(350,80%,60%)',
+                    backgroundColor: ctx => {
+                        const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
+                        g.addColorStop(0, 'hsl(350,80%,60%,0.25)');
+                        g.addColorStop(1, 'hsl(350,80%,60%,0.01)');
+                        return g;
+                    },
+                    borderWidth: 2.5,
+                    pointBackgroundColor: 'hsl(350,80%,60%)',
+                    pointRadius: 5, pointHoverRadius: 7,
+                    tension: 0.45, fill: true
+                },
+                {
+                    label: `Low °${currentUnit}`,
+                    data: currentUnit === 'C' ? minData : minData.map(toF),
+                    borderColor: 'hsl(220,80%,62%)',
+                    backgroundColor: ctx => {
+                        const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
+                        g.addColorStop(0, 'hsl(220,80%,62%,0.2)');
+                        g.addColorStop(1, 'hsl(220,80%,62%,0.01)');
+                        return g;
+                    },
+                    borderWidth: 2.5,
+                    pointBackgroundColor: 'hsl(220,80%,62%)',
+                    pointRadius: 5, pointHoverRadius: 7,
+                    tension: 0.45, fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    labels: { color: textColor, usePointStyle: true, pointStyleWidth: 10, font: { family: 'Inter', weight: '600', size: 12 } }
+                },
+                tooltip: {
+                    backgroundColor: 'hsl(222,25%,14%)',
+                    borderColor: 'hsl(222,20%,22%)',
+                    borderWidth: 1,
+                    titleColor: '#e0e4f0',
+                    bodyColor: '#9aa0b8',
+                    padding: 12,
+                    callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}°` }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, font: { family: 'Inter', weight: '600', size: 11 } }
+                },
+                y: {
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, font: { family: 'Inter', weight: '600', size: 11 }, callback: v => v + '°' }
+                }
+            }
+        }
+    });
+}
+
+function redrawChart() { buildChart(); }
+
+document.addEventListener('DOMContentLoaded', buildChart);
+
+// Auto-dismiss flashes
+setTimeout(() => {
+    document.querySelectorAll('.flash').forEach(el => {
+        el.style.transition = 'opacity 0.5s';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 500);
+    });
+}, 5000);
+</script>
+</body>
+</html>
