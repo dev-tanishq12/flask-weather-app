@@ -47,6 +47,8 @@ google = oauth.register(
         "scope": "openid email profile",
         "prompt": "select_account"
     },
+    authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
+    token_url="https://oauth2.googleapis.com/token",
 )
 
 login_manager = LoginManager()
@@ -298,10 +300,7 @@ def login():
         return abort(400)
     session['next'] = next_page or url_for('weather')
     session.permanent = True  # activate PERMANENT_SESSION_LIFETIME
-    redirect_uri = url_for('authorize', _external=True)
-    if 'localhost' in redirect_uri and redirect_uri.startswith('https://'):
-        redirect_uri = redirect_uri.replace('https://', 'http://')
-    return google.authorize_redirect(redirect_uri)
+    return google.authorize_redirect(url_for('authorize', _external=True))
 
 @app.route("/login/callback")
 def authorize():
