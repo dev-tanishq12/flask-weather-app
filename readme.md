@@ -166,7 +166,7 @@ pip freeze > requirements.txt
 ## 🙋‍♂️ Author
 
 **Your Name**  
-[GitHub](https://github.com/yourusername) · [LinkedIn](https://linkedin.com/in/yourusername)
+[GitHub](https://github.com/dev-tanishq12) · [LinkedIn](linkedin.com/in/tanishq-arya)
 
 ---
 
